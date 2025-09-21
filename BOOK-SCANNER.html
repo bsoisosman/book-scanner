@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Book Scanner</title>
+    
+    <meta name="theme-color" content="#4a90e2">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Book Scanner">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
+    
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        .app {
+            max-width: 400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: #4a90e2;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: normal;
+        }
+
+        .section {
+            padding: 20px;
+        }
+
+        .section h2 {
+            margin: 0 0 15px 0;
+            font-size: 18px;
+            color: #333;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            box-sizing: border-box;
+            margin-bottom: 10px;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #4a90e2;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+
+        button:hover {
+            background: #357abd;
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .success {
+            background: #28a745;
+        }
+
+        .danger {
+            background: #dc3545;
+        }
+
+        #scanner {
+            width: 100%;
+            height: 250px;
+            background: #000;
+            border-radius: 5px;
+            margin: 10px 0;
+            display: none;
+        }
+
+        #scanner video, #scanner canvas {
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: cover;
+            border-radius: 5px;
+        }
+
+        .status {
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-size: 14px;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .book-info {
+            background: #f8f9fa;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+
+        .book-info h3 {
+            margin: 0 0 5px 0;
+            font-size: 16px;
+        }
+
+        .book-info p {
+            margin: 2px 0;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .connection {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #dc3545;
+            margin-right: 8px;
+        }
+
+        .dot.connected {
+            background: #28a745;
+        }
+
+        .small-btn {
+            width: auto;
+            padding: 5px 10px;
+            font-size: 12px;
+        }
+
+        .setup-help {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+
+        .setup-help h4 {
+            margin: 0 0 8px 0;
+            color: #1976d2;
+        }
+
+        .recent-item {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+
+        .recent-item .title {
+            font-weight: 500;
+        }
+
+        .recent-item .details {
+            color: #666;
+            font-size: 12px;
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <div class="header">
+            <h1>Book Scanner</h1>
+        </div>
+
+        <div class="section">
+            <h2>Setup</h2>
+            
+            <div class="setup-help">
+                <h4>Quick Setup:</h4>
+                1. Get a Google Sheets API key from Google Cloud Console<br>
+                2. Create a Google Sheet and copy its ID from the URL<br>
+                3. Enter both below and test the connection
+            </div>
+
+            <input type="password" id="api-key" placeholder="Google API Key">
+            <input type="text" id="sheet-id" placeholder="Google Sheet ID">
+            <input type="text" id="sheet-range" value="Sheet1!A:H" placeholder="Range (e.g. Sheet1!A:H)">
+            
+            <button onclick="testConnection()">Test Connection</button>
+            
+            <div class="connection">
+                <div style="display: flex; align-items: center;">
+                    <div class="dot" id="connection-dot"></div>
+                    <span id="connection-text">Not connected</span>
+                </div>
+                <button class="small-btn success" onclick="setupHeaders()" id="setup-btn">Setup Headers</button>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Scanner</h2>
+            
+            <button id="scan-btn" class="success" onclick="toggleScanner()">Start Camera</button>
+            
+            <div id="scanner"></div>
+            
+            <input type="text" id="manual-isbn" placeholder="Or enter ISBN manually">
+            <button onclick="lookupManualISBN()">Look Up Book</button>
+            
+            <div id="status"></div>
+            <div id="book-info"></div>
+        </div>
+
+        <div class="section">
+            <h2>Recent Scans</h2>
+            <div id="recent-scans">
+                <p style="color: #666; text-align: center;">No books scanned yet</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let scanning = false;
+        let connected = false;
+        let recentBooks = [];
+
+        // Test Google Sheets connection
+        async function testConnection() {
+            const apiKey = document.getElementById('api-key').value;
+            const sheetId = document.getElementById('sheet-id').value;
+            
+            if (!apiKey || !sheetId) {
+                showMessage('Please enter API key and Sheet ID', 'error');
+                return;
+            }
+
+            showMessage('Testing connection...', 'info');
+
+            try {
+                const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/Sheet1!A1?key=${apiKey}`;
+                const response = await fetch(url);
+                
+                if (response.ok) {
+                    connected = true;
+                    updateConnection();
+                    showMessage('Connected successfully!', 'success');
+                } else {
+                    connected = false;
+                    updateConnection();
+                    showMessage('Connection failed. Check your credentials.', 'error');
+                }
+            } catch (error) {
+                connected = false;
+                updateConnection();
+                showMessage('Connection error. Please try again.', 'error');
+            }
+        }
+
+        // Update connection display
+        function updateConnection() {
+            const dot = document.getElementById('connection-dot');
+            const text = document.getElementById('connection-text');
+            
+            if (connected) {
+                dot.classList.add('connected');
+                text.textContent = 'Connected';
+            } else {
+                dot.classList.remove('connected');
+                text.textContent = 'Not connected';
+            }
+        }
+
+        // Setup sheet headers
+        async function setupHeaders() {
+            if (!connected) {
+                showMessage('Connect to Google Sheets first', 'error');
+                return;
+            }
+
+            const apiKey = document.getElementById('api-key').value;
+            const sheetId = document.getElementById('sheet-id').value;
+            const range = document.getElementById('sheet-range').value;
+
+            const headers = [['Book', 'Author', 'ISBN', 'Genre', 'Description']];
+
+            try {
+                const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${range}?valueInputOption=RAW&key=${apiKey}`;
+                const response = await fetch(url, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ values: headers })
+                });
+
+                if (response.ok) {
+                    showMessage('Headers added to sheet!', 'success');
+                } else {
+                    showMessage('Failed to add headers', 'error');
+                }
+            } catch (error) {
+                showMessage('Error adding headers', 'error');
+            }
+        }
+
+        // Toggle scanner
+        function toggleScanner() {
+            if (!connected) {
+                showMessage('Connect to Google Sheets first', 'error');
+                return;
+            }
+
+            if (scanning) {
+                stopScanner();
+            } else {
+                startScanner();
+            }
+        }
+
+        // Start scanner
+        function startScanner() {
+            const scannerDiv = document.getElementById('scanner');
+            const btn = document.getElementById('scan-btn');
+            
+            scannerDiv.style.display = 'block';
+            btn.textContent = 'Stop Camera';
+            btn.classList.remove('success');
+            btn.classList.add('danger');
+            
+            scanning = true;
+
+            Quagga.init({
+                inputStream: {
+                    name: "Live",
+                    type: "LiveStream",
+                    target: scannerDiv,
+                    constraints: {
+                        facingMode: "environment"
+                    }
+                },
+                decoder: {
+                    readers: ["ean_reader", "ean_8_reader"]
+                }
+            }, function(err) {
+                if (err) {
+                    showMessage('Camera not available', 'error');
+                    stopScanner();
+                    return;
+                }
+                Quagga.start();
+                showMessage('Point camera at barcode', 'info');
+            });
+
+            Quagga.onDetected(function(data) {
+                const isbn = data.codeResult.code;
+                processISBN(isbn);
+            });
+        }
+
+        // Stop scanner
+        function stopScanner() {
+            if (scanning) {
+                Quagga.stop();
+            }
+            
+            const scannerDiv = document.getElementById('scanner');
+            const btn = document.getElementById('scan-btn');
+            
+            scannerDiv.style.display = 'none';
+            btn.textContent = 'Start Camera';
+            btn.classList.add('success');
+            btn.classList.remove('danger');
+            
+            scanning = false;
+        }
+
+        // Look up manual ISBN
+        function lookupManualISBN() {
+            if (!connected) {
+                showMessage('Connect to Google Sheets first', 'error');
+                return;
+            }
+
+            const isbn = document.getElementById('manual-isbn').value.trim();
+            if (!isbn) {
+                showMessage('Enter an ISBN first', 'error');
+                return;
+            }
+
+            processISBN(isbn);
+        }
+
+        // Process ISBN
+        async function processISBN(isbn) {
+            showMessage('Looking up book...', 'info');
+
+            try {
+                const response = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}`);
+                const data = await response.json();
+
+                if (data.items && data.items.length > 0) {
+                    const book = data.items[0].volumeInfo;
+                    const bookData = {
+                        title: book.title || 'Unknown Title',
+                        author: book.authors ? book.authors.join(', ') : 'Unknown Author',
+                        isbn: isbn,
+                        genre: book.categories ? book.categories[0] : 'Unknown',
+                        description: book.description || 'No description available'
+                    };
+
+                    showBookInfo(bookData);
+                    await addToSheet(bookData);
+                    addToRecent(bookData);
+                    
+                    document.getElementById('manual-isbn').value = '';
+                } else {
+                    showMessage('Book not found', 'error');
+                }
+            } catch (error) {
+                showMessage('Lookup failed', 'error');
+            }
+        }
+
+        // Add to Google Sheet
+        async function addToSheet(book) {
+            const apiKey = document.getElementById('api-key').value;
+            const sheetId = document.getElementById('sheet-id').value;
+            const range = document.getElementById('sheet-range').value;
+
+            // Clean up description - remove HTML tags and limit length
+            const cleanDescription = book.description
+                .replace(/<[^>]*>/g, '') // Remove HTML tags
+                .replace(/\s+/g, ' ')    // Replace multiple spaces with single space
+                .trim()                  // Remove leading/trailing spaces
+                .substring(0, 500);      // Limit to 500 characters
+
+            const row = [
+                book.title,
+                book.author, 
+                book.isbn,
+                book.genre,
+                cleanDescription
+            ];
+
+            try {
+                const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${range}:append?valueInputOption=RAW&key=${apiKey}`;
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ values: [row] })
+                });
+
+                if (response.ok) {
+                    showMessage('✓ Added to Google Sheet!', 'success');
+                } else {
+                    showMessage('Failed to add to sheet', 'error');
+                }
+            } catch (error) {
+                showMessage('Error adding to sheet', 'error');
+            }
+        }
+
+        // Show book info
+        function showBookInfo(book) {
+            const div = document.getElementById('book-info');
+            div.innerHTML = `
+                <div class="book-info">
+                    <h3>${book.title}</h3>
+                    <p>by ${book.author}</p>
+                    <p>ISBN: ${book.isbn}</p>
+                    <p>Genre: ${book.genre}</p>
+                </div>
+            `;
+        }
+
+        // Add to recent scans
+        function addToRecent(book) {
+            recentBooks.unshift(book);
+            if (recentBooks.length > 5) {
+                recentBooks.pop();
+            }
+            updateRecent();
+        }
+
+        // Update recent scans display
+        function updateRecent() {
+            const div = document.getElementById('recent-scans');
+            
+            if (recentBooks.length === 0) {
+                div.innerHTML = '<p style="color: #666; text-align: center;">No books scanned yet</p>';
+                return;
+            }
+
+            div.innerHTML = recentBooks.map(book => `
+                <div class="recent-item">
+                    <div class="title">${book.title}</div>
+                    <div class="details">by ${book.author} • ${book.genre}</div>
+                </div>
+            `).join('');
+        }
+
+        // Show message
+        function showMessage(text, type) {
+            const div = document.getElementById('status');
+            div.innerHTML = `<div class="status ${type}">${text}</div>`;
+            
+            if (type === 'success') {
+                setTimeout(() => {
+                    div.innerHTML = '';
+                }, 3000);
+            }
+        }
+
+        // Handle Enter key
+        document.getElementById('manual-isbn').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                lookupManualISBN();
+            }
+        });
+    </script>
+</body>
+</html>
